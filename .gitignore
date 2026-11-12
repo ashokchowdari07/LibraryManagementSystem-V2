@@ -1,0 +1,33 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# SQLite databases (generated at runtime by init_db())
+*.db
+*.sqlite3
+
+# Environment variables & secrets
+.env
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Temporary scripts
+powershell.cmd
+
+
+# Vercel
+.vercel/

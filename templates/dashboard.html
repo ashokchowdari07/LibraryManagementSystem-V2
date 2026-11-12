@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard – Library Management System</title>
+    <meta name="description" content="Overview dashboard for the Library Management System." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>{{ inline_css | safe }}</style>
+</head>
+<body>
+
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-logo">📚 <span>LibraryMS</span></div>
+        <nav class="sidebar-nav">
+            <a href="/dashboard" class="nav-link active" id="nav-dashboard">🏠 Dashboard</a>
+            <a href="/books"    class="nav-link"        id="nav-books">📖 Books</a>
+            <a href="/members"  class="nav-link"        id="nav-members">👥 Members</a>
+            <a href="/issued"   class="nav-link"        id="nav-issued">📤 Issued Books</a>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="/logout" class="nav-link logout-link" id="nav-logout">🚪 Logout</a>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <header class="page-header">
+            <h1>Dashboard</h1>
+            <span class="welcome-text">Welcome, <strong>{{ session['user'] }}</strong></span>
+        </header>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Stat Cards -->
+        <section class="stats-grid" id="stats-grid">
+            <div class="stat-card" id="stat-books">
+                <div class="stat-icon">📖</div>
+                <div class="stat-info">
+                    <span class="stat-number">{{ total_books }}</span>
+                    <span class="stat-label">Total Books</span>
+                </div>
+            </div>
+            <div class="stat-card" id="stat-members">
+                <div class="stat-icon">👥</div>
+                <div class="stat-info">
+                    <span class="stat-number">{{ total_members }}</span>
+                    <span class="stat-label">Total Members</span>
+                </div>
+            </div>
+            <div class="stat-card" id="stat-issued">
+                <div class="stat-icon">📤</div>
+                <div class="stat-info">
+                    <span class="stat-number">{{ total_issued }}</span>
+                    <span class="stat-label">Books Issued</span>
+                </div>
+            </div>
+            <div class="stat-card" id="stat-overdue">
+                <div class="stat-icon">⚠️</div>
+                <div class="stat-info">
+                    <span class="stat-number">{{ total_overdue }}</span>
+                    <span class="stat-label">Overdue</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Quick Actions -->
+        <section class="quick-actions" id="quick-actions">
+            <h2>Quick Actions</h2>
+            <div class="action-buttons">
+                <a href="/books?action=add"   class="btn btn-primary"   id="btn-go-books">➕ Add Book</a>
+                <a href="/members?action=add" class="btn btn-secondary" id="btn-go-members">➕ Add Member</a>
+                <a href="/issued?action=issue"  class="btn btn-secondary" id="btn-go-issued">📤 Issue Book</a>
+            </div>
+        </section>
+    </main>
+
+    <script>{{ inline_js | safe }}</script>
+</body>
+</html>

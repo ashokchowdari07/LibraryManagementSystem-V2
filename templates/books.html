@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Books – Library Management System</title>
+    <meta name="description" content="Manage library books – add, edit, and remove books." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>{{ inline_css | safe }}</style>
+</head>
+
+<body>
+
+    <!-- ── Sidebar Navigation ──────────────────────────────── -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-logo">📚 <span>LibraryMS</span></div>
+        <nav class="sidebar-nav">
+            <a href="/dashboard" class="nav-link" id="nav-dashboard">🏠 Dashboard</a>
+            <a href="/books" class="nav-link active" id="nav-books">📖 Books</a>
+            <a href="/members" class="nav-link" id="nav-members">👥 Members</a>
+            <a href="/issued" class="nav-link" id="nav-issued">📤 Issued Books</a>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="/logout" class="nav-link logout-link" id="nav-logout">🚪 Logout</a>
+        </div>
+    </aside>
+
+    <!-- ── Main Content ────────────────────────────────────── -->
+    <main class="main-content">
+
+        <!-- Page Header with Add Book button -->
+        <header class="page-header">
+            <h1>📖 Books</h1>
+            <button class="btn btn-primary" id="open-add-modal-btn" onclick="openAddModal()">
+                ➕ Add Book
+            </button>
+        </header>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <!-- Books Table -->
+        <section class="table-section">
+            {% if books %}
+            <table class="data-table" id="books-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Title</th>
+                        <th>Author</th>
+                        <th>Category</th>
+                        <th>ISBN</th>
+                        <th>Qty</th>
+                        <th>Available</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for book in books %}
+                    <tr>
+                        <td>{{ book['id'] }}</td>
+                        <td><strong>{{ book['title'] }}</strong></td>
+                        <td>{{ book['author'] }}</td>
+                        <td>{{ book['category'] or '—' }}</td>
+                        <td>{{ book['isbn'] or '—' }}</td>
+                        <td>{{ book['quantity'] }}</td>
+                        <td>
+                            <span class="badge {% if book['available'] > 0 %}badge-success{% else %}badge-danger{% endif %}">
+                                {% if book['available'] > 0 %}{{ book['available'] }} Available{% else %}0 (Out of stock){% endif %}
+                            </span>
+                        </td>
+                        <td class="actions-cell">
+                            <!-- Edit Button: book data is stored in data-* attributes -->
+                            <button class="btn btn-sm btn-edit js-edit-btn" id="edit-btn-{{ book['id'] }}" type="button"
+                                data-id="{{ book['id'] }}"
+                                data-title="{{ book['title'] | e }}"
+                                data-author="{{ book['author'] | e }}"
+                                data-category="{{ (book['category'] or '') | e }}"
+                                data-isbn="{{ (book['isbn'] or '') | e }}"
+                                data-quantity="{{ book['quantity'] }}">
+                                ✏️ Edit
+                            </button>
+
+                            <!-- Delete Button: submits a hidden form with safe confirmation prompt -->
+                            <form method="POST" action="/books/delete/{{ book['id'] }}"
+                                id="delete-form-{{ book['id'] }}" style="display:inline;"
+                                data-title="{{ book['title'] | e }}"
+                                onsubmit="return confirmDelete(this)">
+                                <button type="submit" class="btn btn-sm btn-delete" id="delete-btn-{{ book['id'] }}">
+                                    🗑️ Delete
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state" id="books-empty">
+                <div class="empty-icon">📭</div>
+                <p>No books found.</p>
+                <p class="empty-sub">Click <strong>➕ Add Book</strong> above to get started!</p>
+            </div>
+            {% endif %}
+        </section>
+    </main>
+
+
+    <!-- ═══════════════════════════════════════════════════════
+         ADD BOOK MODAL
+         ═══════════════════════════════════════════════════════ -->
+    <div class="modal-overlay" id="add-modal-overlay" onclick="closeAddModal(event)">
+        <div class="modal" id="add-modal" role="dialog" aria-modal="true" aria-labelledby="add-modal-title">
+            <div class="modal-header">
+                <h2 id="add-modal-title">➕ Add New Book</h2>
+                <button class="modal-close" id="close-add-modal-btn" onclick="closeAddModal()"
+                    aria-label="Close">✕</button>
+            </div>
+            <form method="POST" action="/books/add" id="add-book-form">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="add-title">Book Title <span class="required">*</span></label>
+                        <input type="text" id="add-title" name="title" placeholder="e.g. The Great Gatsby" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="add-author">Author <span class="required">*</span></label>
+                        <input type="text" id="add-author" name="author" placeholder="e.g. F. Scott Fitzgerald"
+                            required />
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="add-category">Category</label>
+                            <input type="text" id="add-category" name="category" placeholder="e.g. Fiction" />
+                        </div>
+                        <div class="form-group">
+                            <label for="add-isbn">ISBN</label>
+                            <input type="text" id="add-isbn" name="isbn" placeholder="e.g. 978-3-16-148410-0" />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="add-quantity">Quantity <span class="required">*</span></label>
+                        <input type="number" id="add-quantity" name="quantity" value="1" min="0" required />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeAddModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="add-book-submit-btn">Save Book</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- ═══════════════════════════════════════════════════════
+         EDIT BOOK MODAL
+         ═══════════════════════════════════════════════════════ -->
+    <div class="modal-overlay" id="edit-modal-overlay" onclick="closeEditModal(event)">
+        <div class="modal" id="edit-modal" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title">
+            <div class="modal-header">
+                <h2 id="edit-modal-title">✏️ Edit Book</h2>
+                <button class="modal-close" id="close-edit-modal-btn" onclick="closeEditModal()"
+                    aria-label="Close">✕</button>
+            </div>
+            <!-- The action URL is set dynamically by JavaScript -->
+            <form method="POST" action="" id="edit-book-form">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="edit-title">Book Title <span class="required">*</span></label>
+                        <input type="text" id="edit-title" name="title" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-author">Author <span class="required">*</span></label>
+                        <input type="text" id="edit-author" name="author" required />
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="edit-category">Category</label>
+                            <input type="text" id="edit-category" name="category" />
+                        </div>
+                        <div class="form-group">
+                            <label for="edit-isbn">ISBN</label>
+                            <input type="text" id="edit-isbn" name="isbn" />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-quantity">Quantity <span class="required">*</span></label>
+                        <input type="number" id="edit-quantity" name="quantity" min="0" required />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="edit-book-submit-btn">Update Book</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <script>{{ inline_js | safe }}</script>
+    <script>
+        // ── Add Modal ──────────────────────────────────────────────
+        function openAddModal() {
+            document.getElementById("add-modal-overlay").classList.add("open");
+            document.getElementById("add-title").focus();
+        }
+
+        function closeAddModal(event) {
+            if (event && event.target !== document.getElementById("add-modal-overlay")) return;
+            document.getElementById("add-modal-overlay").classList.remove("open");
+            document.getElementById("add-book-form").reset();
+        }
+
+        // ── Edit Modal ─────────────────────────────────────────────
+        document.querySelectorAll(".js-edit-btn").forEach(function (btn) {
+            btn.addEventListener("click", function () {
+                var id = btn.dataset.id;
+                var title = btn.dataset.title;
+                var author = btn.dataset.author;
+                var category = btn.dataset.category;
+                var isbn = btn.dataset.isbn;
+                var quantity = btn.dataset.quantity;
+
+                document.getElementById("edit-book-form").action = "/books/edit/" + id;
+                document.getElementById("edit-title").value = title;
+                document.getElementById("edit-author").value = author;
+                document.getElementById("edit-category").value = category;
+                document.getElementById("edit-isbn").value = isbn;
+                document.getElementById("edit-quantity").value = quantity;
+
+                document.getElementById("edit-modal-overlay").classList.add("open");
+                document.getElementById("edit-title").focus();
+            });
+        });
+
+        function closeEditModal(event) {
+            if (event && event.target !== document.getElementById("edit-modal-overlay")) return;
+            document.getElementById("edit-modal-overlay").classList.remove("open");
+        }
+
+        // ── Delete Confirmation ────────────────────────────────────
+        function confirmDelete(form) {
+            var title = (form && form.getAttribute("data-title")) ? form.getAttribute("data-title") : "this book";
+            return window.confirm('Are you sure you want to delete "' + title + '"? This cannot be undone.');
+        }
+
+        // ── Close modals with Escape key ───────────────────────────
+        document.addEventListener("keydown", function (e) {
+            if (e.key === "Escape") {
+                document.getElementById("add-modal-overlay").classList.remove("open");
+                document.getElementById("edit-modal-overlay").classList.remove("open");
+            }
+        });
+
+        // ── Open Add Modal if requested via URL query (?action=add) ─
+        if (new URLSearchParams(window.location.search).get("action") === "add") {
+            openAddModal();
+        }
+    </script>
+</body>
+
+</html>

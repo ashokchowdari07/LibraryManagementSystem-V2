@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login – Library Management System</title>
+    <meta name="description" content="Admin login for the Library Management System." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>{{ inline_css | safe }}</style>
+</head>
+<body class="auth-page">
+
+    <div class="auth-card">
+        <!-- Logo / Icon -->
+        <div class="auth-logo">📚</div>
+        <h1 class="auth-title">Library Management</h1>
+        <p class="auth-subtitle">Sign in to your admin panel</p>
+
+        <!-- Flash messages (success / error feedback) -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Login Form -->
+        <form id="login-form" method="POST" action="/login">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input
+                    type="text"
+                    id="username"
+                    name="username"
+                    placeholder="Enter username"
+                    required
+                    autocomplete="username"
+                />
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    placeholder="Enter password"
+                    required
+                    autocomplete="current-password"
+                />
+            </div>
+            <button type="submit" id="login-btn" class="btn btn-primary btn-full">
+                Sign In
+            </button>
+        </form>
+
+        {% if show_demo_hint %}
+        <p class="auth-hint">Default: <strong>admin</strong> / <strong>admin123</strong></p>
+        {% endif %}
+    </div>
+
+    <script>{{ inline_js | safe }}</script>
+</body>
+</html>

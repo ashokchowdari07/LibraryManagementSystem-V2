@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Issued Books – Library Management System</title>
+    <meta name="description" content="Track issued and returned books with due dates and late fines." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>{{ inline_css | safe }}</style>
+</head>
+<body>
+
+    <!-- ── Sidebar Navigation ──────────────────────────────── -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-logo">📚 <span>LibraryMS</span></div>
+        <nav class="sidebar-nav">
+            <a href="/dashboard" class="nav-link"        id="nav-dashboard">🏠 Dashboard</a>
+            <a href="/books"     class="nav-link"        id="nav-books">📖 Books</a>
+            <a href="/members"   class="nav-link"        id="nav-members">👥 Members</a>
+            <a href="/issued"    class="nav-link active" id="nav-issued">📤 Issued Books</a>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="/logout" class="nav-link logout-link" id="nav-logout">🚪 Logout</a>
+        </div>
+    </aside>
+
+    <!-- ── Main Content ────────────────────────────────────── -->
+    <main class="main-content">
+
+        <header class="page-header">
+            <h1>📤 Issued Books</h1>
+            <!-- Only show Issue Book button if there are available books AND members -->
+            {% if available_books and all_members %}
+                <button class="btn btn-primary" id="open-issue-modal-btn" onclick="openIssueModal()">
+                    📖 Issue a Book
+                </button>
+            {% else %}
+                <span class="text-muted" style="font-size:0.85rem;">
+                    {% if not available_books %}No books available to issue.{% endif %}
+                    {% if not all_members %}No members registered.{% endif %}
+                </span>
+            {% endif %}
+        </header>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Issued Books Table -->
+        <section class="table-section">
+            {% if issued_list %}
+            <table class="data-table" id="issued-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Book Title</th>
+                        <th>Member</th>
+                        <th>Issue Date</th>
+                        <th>Due Date</th>
+                        <th>Return Date</th>
+                        <th>Fine (₹)</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in issued_list %}
+                    {# Determine if this row is overdue (issued + past due_date) #}
+                    {% set is_overdue = (row['status'] == 'issued' and row['due_date'] < today) %}
+                    <tr class="{{ 'row-overdue' if is_overdue else '' }}">
+                        <td>{{ row['issue_id'] }}</td>
+                        <td><strong>{{ row['book_title'] }}</strong></td>
+                        <td>
+                            {{ row['member_name'] }}
+                            {% if row['student_id'] %}
+                                <br/><small class="text-muted">{{ row['student_id'] }}</small>
+                            {% endif %}
+                        </td>
+                        <td>{{ row['issue_date'] }}</td>
+                        <td>
+                            {{ row['due_date'] }}
+                            {% if is_overdue %}
+                                <span class="badge badge-danger" style="margin-left:4px;">Overdue</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ row['return_date'] or '—' }}</td>
+                        <td>
+                            {% if row['fine'] and row['fine'] > 0 %}
+                                <span class="badge badge-danger">₹{{ row['fine'] | int }}</span>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if row['status'] == 'issued' %}
+                                <span class="badge badge-info">Issued</span>
+                            {% else %}
+                                <span class="badge badge-success">Returned</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if row['status'] == 'issued' %}
+                                <form
+                                    method="POST"
+                                    action="/issued/return/{{ row['issue_id'] }}"
+                                    id="return-form-{{ row['issue_id'] }}"
+                                    data-title="{{ row['book_title'] | e }}"
+                                    onsubmit="return confirmReturn(this)">
+                                    <button
+                                        type="submit"
+                                        class="btn btn-sm btn-return"
+                                        id="return-btn-{{ row['issue_id'] }}">
+                                        ↩️ Return
+                                    </button>
+                                </form>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state" id="issued-empty">
+                <div class="empty-icon">📭</div>
+                <p>No books have been issued yet.</p>
+                <p class="empty-sub">Click <strong>📖 Issue a Book</strong> above to get started!</p>
+            </div>
+            {% endif %}
+        </section>
+    </main>
+
+
+    <!-- ═══════════════════════════════════════════════════════
+         ISSUE BOOK MODAL
+         ═══════════════════════════════════════════════════════ -->
+    <div class="modal-overlay" id="issue-modal-overlay" onclick="closeIssueModal(event)">
+        <div class="modal" id="issue-modal" role="dialog" aria-modal="true" aria-labelledby="issue-modal-title">
+            <div class="modal-header">
+                <h2 id="issue-modal-title">📖 Issue a Book</h2>
+                <button class="modal-close" id="close-issue-modal-btn" onclick="closeIssueModal()" aria-label="Close">✕</button>
+            </div>
+            <form method="POST" action="/issued/borrow" id="issue-book-form">
+                <div class="modal-body">
+
+                    <div class="form-group">
+                        <label for="select-book">Select Book <span class="required">*</span></label>
+                        <select id="select-book" name="book_id" required>
+                            <option value="">— Choose an available book —</option>
+                            {% for book in available_books %}
+                            <option value="{{ book['id'] }}">
+                                {{ book['title'] }} — {{ book['author'] }} ({{ book['available'] }} available)
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="select-member">Select Member <span class="required">*</span></label>
+                        <select id="select-member" name="member_id" required>
+                            <option value="">— Choose a member —</option>
+                            {% for member in all_members %}
+                            <option value="{{ member['id'] }}">
+                                {{ member['name'] }}{% if member['student_id'] %} ({{ member['student_id'] }}){% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="issue-info-box">
+                        <span>📅</span>
+                        <span>Issue date: <strong>Today</strong> &nbsp;|&nbsp; Due date: <strong>14 days from today</strong></span>
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeIssueModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="issue-submit-btn">Issue Book</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <script>{{ inline_js | safe }}</script>
+    <script>
+        // ── Issue Modal ────────────────────────────────────────────
+        function openIssueModal() {
+            var overlay = document.getElementById("issue-modal-overlay");
+            if (overlay) {
+                overlay.classList.add("open");
+                var select = document.getElementById("select-book");
+                if (select) select.focus();
+            }
+        }
+
+        function closeIssueModal(event) {
+            if (event && event.target !== document.getElementById("issue-modal-overlay")) return;
+            var overlay = document.getElementById("issue-modal-overlay");
+            if (overlay) {
+                overlay.classList.remove("open");
+                var form = document.getElementById("issue-book-form");
+                if (form) form.reset();
+            }
+        }
+
+        // ── Return Confirmation ────────────────────────────────────
+        function confirmReturn(form) {
+            var title = (form && form.getAttribute("data-title")) ? form.getAttribute("data-title") : "this book";
+            return window.confirm('Mark "' + title + '" as returned?\nAny applicable late fine will be calculated automatically.');
+        }
+
+        // ── Escape key closes modal ────────────────────────────────
+        document.addEventListener("keydown", function(e) {
+            if (e.key === "Escape") {
+                var overlay = document.getElementById("issue-modal-overlay");
+                if (overlay) overlay.classList.remove("open");
+            }
+        });
+
+        // ── Open Issue Modal if requested via URL query (?action=issue) ─
+        if (new URLSearchParams(window.location.search).get("action") === "issue") {
+            openIssueModal();
+        }
+    </script>
+</body>
+</html>

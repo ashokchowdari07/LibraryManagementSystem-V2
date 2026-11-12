@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Members – Library Management System</title>
+    <meta name="description" content="Manage library members – register, edit, and remove members." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>{{ inline_css | safe }}</style>
+</head>
+<body>
+
+    <!-- ── Sidebar Navigation ──────────────────────────────── -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-logo">📚 <span>LibraryMS</span></div>
+        <nav class="sidebar-nav">
+            <a href="/dashboard" class="nav-link"        id="nav-dashboard">🏠 Dashboard</a>
+            <a href="/books"     class="nav-link"        id="nav-books">📖 Books</a>
+            <a href="/members"   class="nav-link active" id="nav-members">👥 Members</a>
+            <a href="/issued"    class="nav-link"        id="nav-issued">📤 Issued Books</a>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="/logout" class="nav-link logout-link" id="nav-logout">🚪 Logout</a>
+        </div>
+    </aside>
+
+    <!-- ── Main Content ────────────────────────────────────── -->
+    <main class="main-content">
+
+        <!-- Page Header with Register Member button -->
+        <header class="page-header">
+            <h1>👥 Members</h1>
+            <button class="btn btn-primary" id="open-add-member-btn" onclick="openAddMemberModal()">
+                ➕ Register Member
+            </button>
+        </header>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Members Table -->
+        <section class="table-section">
+            {% if members %}
+            <table class="data-table" id="members-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Full Name</th>
+                        <th>Student ID</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for member in members %}
+                    <tr>
+                        <td>{{ member['id'] }}</td>
+                        <td><strong>{{ member['name'] }}</strong></td>
+                        <td>
+                            {% if member['student_id'] %}
+                                <span class="badge badge-info">{{ member['student_id'] }}</span>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ member['email'] }}</td>
+                        <td>{{ member['phone'] or '—' }}</td>
+                        <td class="actions-cell">
+                            <!-- Edit Button: data stored safely in data-* attributes -->
+                            <button
+                                class="btn btn-sm btn-edit js-edit-member-btn"
+                                id="edit-member-btn-{{ member['id'] }}"
+                                type="button"
+                                data-id="{{ member['id'] }}"
+                                data-name="{{ member['name'] | e }}"
+                                data-student-id="{{ (member['student_id'] or '') | e }}"
+                                data-email="{{ member['email'] | e }}"
+                                data-phone="{{ (member['phone'] or '') | e }}">
+                                ✏️ Edit
+                            </button>
+
+                            <!-- Delete Button: submits a hidden form safely -->
+                            <form
+                                method="POST"
+                                action="/members/delete/{{ member['id'] }}"
+                                id="delete-member-form-{{ member['id'] }}"
+                                style="display:inline;"
+                                data-name="{{ member['name'] | e }}"
+                                onsubmit="return confirmMemberDelete(this)">
+                                <button
+                                    type="submit"
+                                    class="btn btn-sm btn-delete"
+                                    id="delete-member-btn-{{ member['id'] }}">
+                                    🗑️ Delete
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state" id="members-empty">
+                <div class="empty-icon">👤</div>
+                <p>No members registered yet.</p>
+                <p class="empty-sub">Click <strong>➕ Register Member</strong> above to get started!</p>
+            </div>
+            {% endif %}
+        </section>
+    </main>
+
+
+    <!-- ═══════════════════════════════════════════════════════
+         REGISTER MEMBER MODAL
+         ═══════════════════════════════════════════════════════ -->
+    <div class="modal-overlay" id="add-member-overlay" onclick="closeAddMemberModal(event)">
+        <div class="modal" id="add-member-modal" role="dialog" aria-modal="true" aria-labelledby="add-member-title">
+            <div class="modal-header">
+                <h2 id="add-member-title">➕ Register New Member</h2>
+                <button class="modal-close" id="close-add-member-btn" onclick="closeAddMemberModal()" aria-label="Close">✕</button>
+            </div>
+            <form method="POST" action="/members/add" id="add-member-form">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="add-member-name">Full Name <span class="required">*</span></label>
+                        <input type="text" id="add-member-name" name="name"
+                               placeholder="e.g. Ashok Kumar" required />
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="add-member-student-id">Student ID</label>
+                            <input type="text" id="add-member-student-id" name="student_id"
+                                   placeholder="e.g. STU2024001" />
+                        </div>
+                        <div class="form-group">
+                            <label for="add-member-phone">Phone Number</label>
+                            <input type="tel" id="add-member-phone" name="phone"
+                                   placeholder="e.g. 9876543210" />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="add-member-email">Email Address <span class="required">*</span></label>
+                        <input type="email" id="add-member-email" name="email"
+                               placeholder="e.g. ashok@example.com" required />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeAddMemberModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="add-member-submit-btn">Register</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- ═══════════════════════════════════════════════════════
+         EDIT MEMBER MODAL
+         ═══════════════════════════════════════════════════════ -->
+    <div class="modal-overlay" id="edit-member-overlay" onclick="closeEditMemberModal(event)">
+        <div class="modal" id="edit-member-modal" role="dialog" aria-modal="true" aria-labelledby="edit-member-title">
+            <div class="modal-header">
+                <h2 id="edit-member-title">✏️ Edit Member</h2>
+                <button class="modal-close" id="close-edit-member-btn" onclick="closeEditMemberModal()" aria-label="Close">✕</button>
+            </div>
+            <!-- action URL is set dynamically by JavaScript -->
+            <form method="POST" action="" id="edit-member-form">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="edit-member-name">Full Name <span class="required">*</span></label>
+                        <input type="text" id="edit-member-name" name="name" required />
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="edit-member-student-id">Student ID</label>
+                            <input type="text" id="edit-member-student-id" name="student_id" />
+                        </div>
+                        <div class="form-group">
+                            <label for="edit-member-phone">Phone Number</label>
+                            <input type="tel" id="edit-member-phone" name="phone" />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-member-email">Email Address <span class="required">*</span></label>
+                        <input type="email" id="edit-member-email" name="email" required />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeEditMemberModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="edit-member-submit-btn">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <script>{{ inline_js | safe }}</script>
+    <script>
+        // ── Register (Add) Modal ───────────────────────────────────
+        function openAddMemberModal() {
+            document.getElementById("add-member-overlay").classList.add("open");
+            document.getElementById("add-member-name").focus();
+        }
+
+        function closeAddMemberModal(event) {
+            if (event && event.target !== document.getElementById("add-member-overlay")) return;
+            document.getElementById("add-member-overlay").classList.remove("open");
+            document.getElementById("add-member-form").reset();
+        }
+
+        // ── Edit Modal: reads data-* attributes safely ─────────────
+        document.querySelectorAll(".js-edit-member-btn").forEach(function(btn) {
+            btn.addEventListener("click", function () {
+                var id        = btn.dataset.id;
+                var name      = btn.dataset.name;
+                var studentId = btn.dataset.studentId;   // data-student-id → dataset.studentId
+                var email     = btn.dataset.email;
+                var phone     = btn.dataset.phone;
+
+                document.getElementById("edit-member-form").action = "/members/edit/" + id;
+                document.getElementById("edit-member-name").value       = name;
+                document.getElementById("edit-member-student-id").value = studentId;
+                document.getElementById("edit-member-email").value      = email;
+                document.getElementById("edit-member-phone").value      = phone;
+
+                document.getElementById("edit-member-overlay").classList.add("open");
+                document.getElementById("edit-member-name").focus();
+            });
+        });
+
+        function closeEditMemberModal(event) {
+            if (event && event.target !== document.getElementById("edit-member-overlay")) return;
+            document.getElementById("edit-member-overlay").classList.remove("open");
+        }
+
+        // ── Delete Confirmation ────────────────────────────────────
+        function confirmMemberDelete(form) {
+            var name = (form && form.getAttribute("data-name")) ? form.getAttribute("data-name") : "this member";
+            return window.confirm('Are you sure you want to remove "' + name + '"? This cannot be undone.');
+        }
+
+        // ── Close modals with Escape key ───────────────────────────
+        document.addEventListener("keydown", function(e) {
+            if (e.key === "Escape") {
+                document.getElementById("add-member-overlay").classList.remove("open");
+                document.getElementById("edit-member-overlay").classList.remove("open");
+            }
+        });
+
+        // ── Open Add Modal if requested via URL query (?action=add) ─
+        if (new URLSearchParams(window.location.search).get("action") === "add") {
+            openAddMemberModal();
+        }
+    </script>
+</body>
+</html>
